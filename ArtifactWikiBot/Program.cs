@@ -1,15 +1,4 @@
-﻿using DSharpPlus;
-using DSharpPlus.Interactivity;
-using DSharpPlus.CommandsNext;
-using DSharpPlus.EventArgs;
-using System;
-using System.Collections.Generic;
-using System.Text;
-using System.IO;
-using System.Threading.Tasks;
-using System.Threading;
-
-namespace ArtifactWikiBot
+﻿namespace ArtifactWikiBot
 {
     class Program
     {
