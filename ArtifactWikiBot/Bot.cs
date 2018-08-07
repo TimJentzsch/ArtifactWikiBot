@@ -9,6 +9,7 @@ using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using Newtonsoft.Json;
 using System.Threading;
+using ArtifactWikiBot.Wiki;
 
 namespace ArtifactWikiBot
 {
@@ -49,7 +50,7 @@ namespace ArtifactWikiBot
 			Client = new DiscordClient(cfg);
 
 			// Initialize and update Json files
-			await APIManager.Init(Client, 10, 1);
+			await APIManager.Init(Client, 15, 1);
 			Thread cardUpdater = new Thread(async () => await APIManager.CardUpdater());
 			cardUpdater.Start();
 			Thread changesUpdater = new Thread(async () => await APIManager.ChangesUpdater());
