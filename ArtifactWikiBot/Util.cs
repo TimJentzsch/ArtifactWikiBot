@@ -5,11 +5,26 @@ using DSharpPlus.Entities;
 using DSharpPlus.CommandsNext;
 using System.Text.RegularExpressions;
 using ArtifactWikiBot.Wiki;
+using Newtonsoft.Json.Linq;
 
 namespace ArtifactWikiBot
 {
 	public static class Util
 	{
+		public static string Limit(this string s, int limit)
+		{
+			if (s == null)
+				return null;
+			if(s.Length > limit)
+			{
+				return s.Substring(0, (limit - 3)) + "...";
+			}
+			else
+			{
+				return s;
+			}
+		}
+
 		public static bool IsEmpty(this string s)
 		{
 			if (s == null) return true;
@@ -64,6 +79,68 @@ namespace ArtifactWikiBot
 			return $"https://artifactwiki.com/wiki/{link}";
 		}
 
+		public static string GetWikiEditURL(string title)
+		{
+			title = title.Replace(' ', '_');
+			return $"https://artifactwiki.com/index.php?title={title}&action=edit";
+		}
+
+		public static string GetDiscordLink(string link, string name)
+		{
+			return $"[{name}]({link})";
+		}
+
+		public static string GetDiscordWikiLink(string name)
+		{
+			return GetDiscordLink(GetWikiURL(name), name);
+		}
+
+		public static string GetDiscordWikiLink(string link, string name)
+		{
+			return GetDiscordLink(GetWikiURL(link), name);
+		}
+
+		public static string GetDiscordWikiEditLink(string name)
+		{
+			return GetDiscordLink(GetWikiEditURL(name), name);
+		}
+
+		public static string GetDiscordWikiEditLink(string link, string name)
+		{
+			return GetDiscordLink(GetWikiEditURL(link), name);
+		}
+
+		public static bool Exists(this JToken token, string key)
+		{
+			try
+			{
+				Console.WriteLine("Getting token...");
+				var result = token[key];
+				Console.WriteLine("Got token.");
+				return result != null;
+			}
+			catch (Exception)
+			{
+				return false;
+			}
+		}
+
+		public static bool TryGet(this JToken token, string key, out JToken result)
+		{
+			try
+			{
+				Console.WriteLine("Getting token...");
+				result = token[key];
+				Console.WriteLine("Got token.");
+				return result != null;
+			}
+			catch (Exception)
+			{
+				result = null;
+				return false;
+			}
+		}
+
 		// Get a Discord emoji representing an icon
 		public static DiscordEmoji GetEmoji(CommandContext ctx, string name)
 		{
@@ -106,7 +183,7 @@ namespace ArtifactWikiBot
 				case "red":
 					return new DiscordColor(255, 0, 0);
 				case "blue":
-					return new DiscordColor(0, 0, 255);
+					return new DiscordColor(100, 100, 255);
 				case "green":
 					return new DiscordColor(0, 255, 0);
 				case "black":

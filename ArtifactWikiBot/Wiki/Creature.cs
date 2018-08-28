@@ -16,6 +16,7 @@ namespace ArtifactWikiBot.Wiki
 		public int Attack { get; }
 		public int Armor { get; }
 		public int Health { get; }
+		public string Description { get; }
 		
 		public CreatureCard(JToken creature)
 		{
@@ -27,6 +28,7 @@ namespace ArtifactWikiBot.Wiki
 			Attack = Int32.TryParse((string)creature["Attack"], out int attack) ? attack : 0;
 			Armor = Int32.TryParse((string)creature["Armor"], out int armor) ? armor : 0;
 			Health = Int32.TryParse((string)creature["Health"], out int health) ? health : 0;
+			Description = Util.WikiDecode((string)creature["Description"]);
 		}
 
 		public static bool GetByName(string name, out CreatureCard result)
@@ -51,7 +53,7 @@ namespace ArtifactWikiBot.Wiki
 			{
 				Title = $"**{Name}** ({Color})",
 				Url = Util.GetWikiURL(Name),
-				Description = $"{Attack} {attack_emoji}, {Armor} {armor_emoji}, {Health} {health_emoji}.",
+				Description = $"{Attack} {attack_emoji}, {Armor} {armor_emoji}, {Health} {health_emoji}.\n\n{Description}",
 				ImageUrl = imageUrl,
 				ThumbnailUrl = iconUrl,
 				Color = discordColor

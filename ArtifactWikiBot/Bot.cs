@@ -10,6 +10,8 @@ using DSharpPlus.EventArgs;
 using Newtonsoft.Json;
 using System.Threading;
 using ArtifactWikiBot.Wiki;
+using ArtifactWikiBot.Feed;
+using RedditSharp;
 
 namespace ArtifactWikiBot
 {
@@ -23,6 +25,7 @@ namespace ArtifactWikiBot
 
 		public bool IsReady { get; set; }
 		public DiscordClient Client { get; set; }
+		
 		public CommandsNextModule Commands { get; set; }
 		public APIManager Manager { get; set; }
 
@@ -38,7 +41,7 @@ namespace ArtifactWikiBot
 			ConfigJson cfgjson = JsonConvert.DeserializeObject<ConfigJson>(json);
 			DiscordConfiguration cfg = new DiscordConfiguration
 			{
-				Token = cfgjson.DiscordToken,			// Assign the token
+				Token = cfgjson.DiscordToken,	// Assign the token
 				TokenType = TokenType.Bot,		// It's a bot
 
 				AutoReconnect = true,			// Reconnect automatically
@@ -50,7 +53,7 @@ namespace ArtifactWikiBot
 			Client = new DiscordClient(cfg);
 
 			// Initialize and update Json files
-			await APIManager.Init(Client, 15, 1);
+			await APIManager.Init();
 			Thread cardUpdater = new Thread(async () => await APIManager.CardUpdater());
 			cardUpdater.Start();
 			Thread changesUpdater = new Thread(async () => await APIManager.ChangesUpdater());
@@ -75,6 +78,8 @@ namespace ArtifactWikiBot
 
 			// Wiki commands
 			Commands.RegisterCommands<WikiCommands>();
+			// Feed commands
+			Commands.RegisterCommands<FeedCommands>();
 
 			// Connect and log in
 			await Client.ConnectAsync();
@@ -104,14 +109,14 @@ namespace ArtifactWikiBot
 		private Task Client_ClientError(ClientErrorEventArgs e)
 		{
 			// Create a log message
-			e.Client.DebugLogger.LogMessage(LogLevel.Error, "ArtifactWikiBot", $"An exception occured: {e.Exception.GetType()}: {e.Exception.Message}", DateTime.Now);
+			e.Client.DebugLogger.LogMessage(LogLevel.Error, "ArtifactWikiBot", $"An exception occured in {e.Exception.Source}: {e.Exception.GetType()}: {e.Exception.Message} during {e.EventName}", DateTime.Now);
 			return Task.CompletedTask;
 		}
 
 		private Task Commands_CommandExecuted(CommandExecutionEventArgs e)
 		{
 			// Create a log message
-			e.Context.Client.DebugLogger.LogMessage(LogLevel.Info, "ArtifactWikiBot", $"{e.Context.User.Username} successfully executed the command'{e.Command.QualifiedName}'", DateTime.Now);
+			e.Context.Client.DebugLogger.LogMessage(LogLevel.Info, "ArtifactWikiBot", $"{e.Context.User.Username} successfully executed the command '{e.Command.QualifiedName}'", DateTime.Now);
 			return Task.CompletedTask;
 		}
 
@@ -120,7 +125,7 @@ namespace ArtifactWikiBot
 			// Create a log message
 			e.Context.Client.DebugLogger.LogMessage(LogLevel.Error, "ArtifactWikiBot", 
 				$"{e.Context.User.Username} tried executing '{e.Command?.QualifiedName ?? "<unknown command>"}' " +
-				$"but it errored: {e.Exception.GetType()}: {e.Exception.Message ?? "<no message>"}", DateTime.Now);
+				$"but it errored in {e.Exception.TargetSite}: {e.Exception.GetType()}: {e.Exception.Message ?? "<no message>"}", DateTime.Now);
 			if (e.Exception is ChecksFailedException ex)
 			{
 				// The user doesn't have permission to execute the command
@@ -142,12 +147,17 @@ namespace ArtifactWikiBot
 	// Struct to wrap the config.json
 	public struct ConfigJson
 	{
+		// Your Reddit Token
+		// IMPORTANT: Never share this with anybody! Make sure the config.json is listed in your gitignore file.
+		[JsonProperty("redditToken")]
+		public string RedditToken { get; private set; }
+
 		// Your Discord Token
 		// IMPORTANT: Never share this with anybody! Make sure the config.json is listed in your gitignore file.
 		[JsonProperty("discordToken")]
 		public string DiscordToken { get; private set; }
 
-		// The command prefix
+		// The command prefix, e.g. '!'
 		[JsonProperty("prefix")]
 		public string CommandPrefix { get; private set; }
 	}

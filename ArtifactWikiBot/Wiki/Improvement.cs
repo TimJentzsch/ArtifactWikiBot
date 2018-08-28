@@ -14,6 +14,7 @@ namespace ArtifactWikiBot.Wiki
 		public LaneType Lane { get; }
 		public string Image { get; }
 		public string Icon { get; }
+		public string Description { get; }
 		public HeroCard Hero { get; }
 		public AbilityCard Ability { get; }
 
@@ -25,7 +26,8 @@ namespace ArtifactWikiBot.Wiki
 			Image = (string)improvement["Image"];
 			Icon = (string)improvement["Icon"];
 			Hero = HeroCard.GetByName((string)improvement["Hero"], out HeroCard hero) ? hero : null;
-			Ability = AbilityCard.GetByName((string)improvement["Reactive"], out AbilityCard ability) ? ability : null;
+			Description = Util.WikiDecode((string)improvement["Description"]);
+			Ability = AbilityCard.GetByName((string)improvement["Ability"], out AbilityCard ability) ? ability : null;
 
 			switch (((string)improvement["Lane"]).ToLower())
 			{
@@ -60,6 +62,7 @@ namespace ArtifactWikiBot.Wiki
 				Title = $"{leftLane}{rightLane}[{Mana}] **{Name}** ({Color})",
 				Url = Util.GetWikiURL(Name),
 				ImageUrl = imageUrl,
+				Description = Description,
 				ThumbnailUrl = heroIconUrl,
 				Color = discordColor
 			};

@@ -2,10 +2,14 @@
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using ArtifactWikiBot.Wiki;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 
 
 using DSharpPlus;
@@ -18,12 +22,14 @@ namespace ArtifactWikiBot
 	/// </summary>
 	public class APIManager
 	{
-		public static DiscordClient Client { get; set; }
+		public static DiscordClient Client => Bot.INSTANCE.Client;
 
 		public static WikiChange[] RecentChanges { get; set; }
 
-		public static double CardDelay { get; set; }
-		public static double ChangesDelay { get; set; }
+		static HttpClient Http = new HttpClient();
+
+		public static double CardDelay => 20;
+		public static double ChangesDelay => 1;
 
 		private static string baseURL = @"https://artifactwiki.com";
 
@@ -33,25 +39,27 @@ namespace ArtifactWikiBot
 		private static string heroAPI = baseURL +
 			@"/api.php?action=cargoquery&format=json&limit=max&tables=Heroes&fields=Title%2C%20Color%2C%20Attack%2C%20Armor%2C%20Health%2C%20Ability%2C%20Icon%2C%20Image";
 		private static string creatureAPI = baseURL +
-			@"/api.php?action=cargoquery&format=json&limit=max&tables=Creatures&fields=Title%2C%20Color%2C%20Hero%2C%20Attack%2C%20Armor%2C%20Health%2C%20Image%2C%20Ability";
+			@"/api.php?action=cargoquery&format=json&limit=max&tables=Creatures&fields=Title%2C%20Color%2C%20Hero%2C%20Description%2C%20Attack%2C%20Armor%2C%20Health%2C%20Image%2C%20Ability";
 		private static string spellAPI = baseURL +
 			@"/api.php?action=cargoquery&format=json&limit=max&tables=Spells&fields=Title%2C%20Color%2C%20Mana%2C%20Hero%2C%20Description%2C%20Image%2C%20Lane";
 		private static string itemAPI = baseURL +
-			@"/api.php?action=cargoquery&format=json&limit=max&tables=Items&fields=Title%2C%20Category%2C%20Cost%2C%20Description%2C%20Active%2C%20Image";
+			@"/api.php?action=cargoquery&format=json&limit=max&tables=Items&fields=Title%2C%20Category%2C%20Cost%2C%20Description%2C%20Ability%2C%20Image";
 		private static string improvementAPI = baseURL +
-			@"/api.php?action=cargoquery&format=json&limit=max&tables=Improvements&fields=Title%2C%20Color%2C%20Hero%2C%20Mana%2C%20Reactive%2C%20Icon%2C%20Image%2C%20Lane";
+			@"/api.php?action=cargoquery&format=json&limit=max&tables=Improvements&fields=Title%2C%20Color%2C%20Hero%2C%20Mana%2C%20Description%2C%20Ability%2C%20Icon%2C%20Image%2C%20Lane";
 		#endregion
 
 		private static string changesAPI = baseURL +
-			@"/api.php?action=query&list=recentchanges&rcprop=title|ids|sizes|flags|user|parsedcomment|loginfo&rclimit=10&format=json";
+			@"/api.php?action=query&format=json&list=recentchanges&rcdir=older&rcprop=title%7Ctimestamp%7Cids%7Cuser%7Cparsedcomment%7Cloginfo%7Csizes";
 
 
 		// Initialize Json Files
-		public static async Task Init(DiscordClient client, int cardDelay, int changesDelay)
+		public static async Task Init()
 		{
-			Client = client;
-			CardDelay = cardDelay;
-			ChangesDelay = changesDelay;
+			Http.BaseAddress = new Uri("https://artifactwiki.com");
+			Http.DefaultRequestHeaders.Accept.Clear();
+			Http.DefaultRequestHeaders.Accept.Add(
+				new MediaTypeWithQualityHeaderValue("application/json"));
+			Console.WriteLine("Http init finished");
 			await UpdateAllCards();
 			await UpdateRecentChanges();
 		}
@@ -64,6 +72,41 @@ namespace ArtifactWikiBot
 				Thread.Sleep(delay);
 				await UpdateRecentChanges();
 			}
+		}
+
+		public static async Task<WikiPage> GetPage(string name)
+		{
+			WikiPage page = null;
+			HttpResponseMessage response = 
+				await Http.GetAsync($@"/api.php?action=query&format=json&prop=revisions%7Ccategories&titles={name}&rvprop=timestamp%7Cuser%7Ccontent&rvlimit=1");
+			if (response.IsSuccessStatusCode)
+			{
+				string result = await response.Content.ReadAsStringAsync();
+				var jsonResult = JObject.Parse(result);
+				var jsonPage = jsonResult["query"]["pages"].First.First;
+				
+				if (jsonPage.Exists("missing"))
+					return page;
+
+				string title = jsonPage["title"].ToString();
+				string user = jsonPage["revisions"][0]["user"].ToString();
+				string date = jsonPage["revisions"][0]["timestamp"].ToString();
+				string content = jsonPage["revisions"][0]["*"].ToString();
+
+				string[] categories = null;
+				
+				if (jsonPage.TryGet("categories", out JToken jsonCategories))
+				{
+					categories = new string[jsonCategories.Count()];
+					for (int i = 0; i < categories.Length; i++)
+					{
+						categories[i] = Regex.Replace(jsonCategories[i]["title"].ToString(), "Category:", "");
+					}
+				}
+				
+				page = new WikiPage(title, content, categories, date, user);
+			}
+			return page;
 		}
 
 		public static async Task<TimeSpan> UpdateRecentChanges()
@@ -92,6 +135,7 @@ namespace ArtifactWikiBot
 				changes[i] = JsonConvert.DeserializeObject<WikiChange>(_changes[i].ToString());
 			}
 
+			Array.Sort(changes);
 			RecentChanges = changes;
 			Client.DebugLogger.LogMessage(LogLevel.Debug, "JsonManager", "'changes.json' updated.", DateTime.Now);
 			DateTime end = DateTime.Now;
@@ -125,7 +169,9 @@ namespace ArtifactWikiBot
 
 			DateTime end = DateTime.Now;
 			await BotStates.SetReady();
-			return end - start;
+			TimeSpan time = end - start;
+			Client.DebugLogger.LogMessage(LogLevel.Info, "APIManager", $"Card lists updated in {time}.", DateTime.Now);
+			return time;
 		}
 
 		public static async Task<TimeSpan> UpdateAbilities()
@@ -181,18 +227,14 @@ namespace ArtifactWikiBot
 
 		public static async Task<TimeSpan> UpdateSpells()
 		{
-			Console.WriteLine("Update Spells");
 			DateTime start = DateTime.Now;
 			JToken[] spells = await LoadCardJson(spellAPI, "spells");
 			SpellCard[] spellList = new SpellCard[spells.Length];
-			Console.WriteLine("Assign");
 			for (int i = 0; i < spells.Length; i++)
 			{
 				spellList[i] = new SpellCard(spells[i]);
 			}
-			Console.WriteLine("Sort Spells");
 			spellList.Sort();
-			Console.WriteLine("Sorted");
 			SpellCard.List = spellList;
 			DateTime end = DateTime.Now;
 			TimeSpan time = end - start;
@@ -262,53 +304,5 @@ namespace ArtifactWikiBot
 			return array;
 		}
 		#endregion
-	}
-
-	public class WikiChange
-	{
-		[JsonProperty("type")]
-		public string Type { get; private set; }
-
-		[JsonProperty("user")]
-		public string User { get; private set; }
-
-		[JsonProperty("title")]
-		public string Title { get; private set; }
-
-		[JsonProperty("parsedcomment")]
-		public string Comment { get; private set; }
-
-		[JsonProperty("logaction")]
-		public string Logaction { get; private set; }
-
-		public override string ToString()
-		{
-			switch(Type)
-			{
-				case "log":
-					switch(Logaction)
-					{
-						case "block":
-							return $"*L:* **User:{User}** blocked **{Title}**.";
-						case "delete":
-							return $"*L:* **User:{User}** deleted the page **{Title}**.";
-						case "create":
-							return $"*L:* **User:{User}** joined the Wiki!";
-						default:
-							return $"Unknown logaction: {Logaction}.";
-					}
-				case "edit":
-					string comment = "";
-					if(!Comment.Equals(""))
-					{
-						comment = $"\n*{Comment}*";
-					}
-					return $"*E:* **User:{User}** edited the page **{Title}**.{comment}";
-				case "new":
-					return $"*N:* **User:{User}** created the page **{Title}**.";
-				default:
-					return $"Unknown type: {Type}";
-			}
-		}
 	}
 }

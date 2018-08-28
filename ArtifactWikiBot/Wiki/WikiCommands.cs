@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -16,19 +17,98 @@ namespace ArtifactWikiBot.Wiki
 	/// </summary>
 	public class WikiCommands
 	{
+		[Command("page")]
+		[Description("Get a page from the wiki")]
+		public async Task Page(CommandContext ctx)
+		{
+			string name = ctx.RawArgumentString;
+			WikiPage page = await APIManager.GetPage(name);
+
+			if(page == null)
+			{
+				var embed = new DiscordEmbedBuilder
+				{
+					Title = $"**{name}**",
+					Url = Util.GetWikiURL(name),
+					Description = $"The page **{name}** doesn't exist yet!\nThink it's missing? Create it {Util.GetDiscordWikiEditLink(name, "here")}."
+				};
+				await ctx.RespondAsync(embed: embed);
+			}
+			else
+			{
+				await ctx.RespondAsync(embed: page.ToDiscordEmbed());
+			}
+		}
+
 		[Command("changes")]
 		[Description("Get the most recent changes")]
 		public async Task RecentChanges(CommandContext ctx)
 		{
+			// Get the changes from the API Manager
 			WikiChange[] changes = APIManager.RecentChanges;
 
-			string output = changes[0].ToString();
-			for(int i = 1; i < changes.Length; i++)
+			// Create a list to categorize the changes by date
+			LinkedList<LinkedList<WikiChange>> dateChanges = new LinkedList<LinkedList<WikiChange>>();
+			foreach(WikiChange c in changes)
 			{
-				output += "\n" + changes[i].ToString();
+				bool newDate = true;
+				foreach(LinkedList<WikiChange> cl in dateChanges)
+				{
+					// Check if a change with the same date is already enqueued
+					if(cl.First.Value.Timestamp.Day.Equals(c.Timestamp.Day))
+					{
+						// Add the change to the list with the same date
+						newDate = false;
+						cl.AddLast(c);
+						break;
+					}
+				}
+				if(newDate)
+				{
+					// First change with this date, create a new list
+					LinkedList<WikiChange> newList = new LinkedList<WikiChange>();
+					newList.AddLast(c);
+					dateChanges.AddLast(newList);
+				}
 			}
 
-			await ctx.RespondAsync(output);
+			// Basic embed without the changes
+			var embed = new DiscordEmbedBuilder
+			{
+				Title = $"**Recent Changes**",
+				Url = Util.GetWikiURL("Special:RecentChanges"),
+				ThumbnailUrl = Util.GetImageURL("Artifact_Cutout.png"),
+				Color = new DiscordColor(255, 211, 50)
+			};
+
+			// Add a field for every date with the matching changes
+			foreach(LinkedList<WikiChange> cl in dateChanges)
+			{
+				// Format the date
+				string date = cl.First.Value.Timestamp.ToString("yyyy-MM-dd");
+				// Generate the field description
+				string description = "";
+				foreach (WikiChange c in cl)
+				{
+					// Format the changes for this date
+					string changeString = c.ToDiscordDescription() + "\n";
+					if ((description.Length + changeString.Length) < 1024)
+					{
+						// Add it to the description if it doesn't exceed the character limit
+						description += changeString;
+					}
+					else
+					{
+						description += "...";
+						break;
+					}
+				}
+				// Add the field to the embed
+				embed.AddField(date, description);
+			}
+			
+			// Send the embed to the user
+			await ctx.RespondAsync(embed: embed);
 		}
 
 		[Command("hero")]

@@ -21,7 +21,7 @@ namespace ArtifactWikiBot.Wiki
 			Name = (string)creature["Title"];
 			Image = (string)creature["Image"];
 			Description = Util.WikiDecode((string)creature["Description"]);
-			Ability = AbilityCard.GetByName((string)creature["Active"], out AbilityCard ability) ? ability : null;
+			Ability = AbilityCard.GetByName((string)creature["Ability"], out AbilityCard ability) ? ability : null;
 			Cost = Int32.TryParse((string)creature["Cost"], out int cost) ? cost : 0;
 
 			// Convert category into enum
