@@ -214,6 +214,7 @@ namespace ArtifactWikiBot.Wiki
 
 
 		[Command("mpcovcd")]
+		[Hidden]
 		[Description("Our lord and savior")]
 		public async Task Mpcovcd(CommandContext ctx)
 		{

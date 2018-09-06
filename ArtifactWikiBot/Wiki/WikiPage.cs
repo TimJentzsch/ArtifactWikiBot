@@ -119,7 +119,7 @@ namespace ArtifactWikiBot.Wiki
 			name = name.Replace('_', ' ');
 			name = name.Trim();
 			string _name = name.ToLower();
-			
+
 			// Templates to delete completely
 			string[] noprint =
 			{
@@ -160,7 +160,7 @@ namespace ArtifactWikiBot.Wiki
 				"s"
 			};
 
-			foreach(string s in cardIDs)
+			foreach (string s in cardIDs)
 			{
 				if (_name.Equals(s))
 				{
@@ -180,16 +180,16 @@ namespace ArtifactWikiBot.Wiki
 				"green"
 			};
 
-			foreach(string s in categories)
+			foreach (string s in categories)
 			{
-				if(_name.Equals(s))
+				if (_name.Equals(s))
 				{
 					return Util.GetDiscordWikiLink($"Category:{name}", name);
 				}
 			}
 
 			// Format date
-			if(_name.Equals("date"))
+			if (_name.Equals("date"))
 			{
 				if (match.Groups["arg1"].Success)
 				{
@@ -199,13 +199,35 @@ namespace ArtifactWikiBot.Wiki
 			}
 
 			// Format note
-			if(_name.Equals("note"))
+			if (_name.Equals("note"))
 			{
 				if (match.Groups["arg1"].Success)
 				{
 					return $"*{match.Groups["arg1"].Value}*";
 				}
 			}
+
+			if (_name.Equals("documentation"))
+			{
+				string description = Regex.Match(match.Value, @"\s*\|\s*description\s*=\s*(?<value>.*?)\s*(\||}})").Groups["value"].Value;
+				string preview = Regex.Match(match.Value, @"\s*\|\s*preview\s*=\s*(?<value>.*?)\s*(\||}})").Groups["value"].Value;
+				string usage = Regex.Match(match.Value, @"\s*\|\s*usage\s*=\s*(?<value>.*?)\s*(\||}})").Groups["value"].Value;
+
+				if (!description.IsEmpty())
+					description = $"\n{description}";
+				else
+					description = "";
+				if (!preview.IsEmpty())
+					preview = $"\n**Preview**\n{preview}";
+				else
+					preview = "";
+				if (!usage.IsEmpty())
+					usage = $"\n**Usage**\n{usage}";
+				else
+					usage = "";
+
+				return $"__**Documentation**__{description}{preview}{usage}";
+			} 
 
 			return match.Value;
 		}
