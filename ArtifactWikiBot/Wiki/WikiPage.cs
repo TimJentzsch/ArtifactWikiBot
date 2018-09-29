@@ -55,10 +55,16 @@ namespace ArtifactWikiBot.Wiki
 			// Delete Comments
 			parsedContent = Regex.Replace(parsedContent, @"<!--.*?-->", "", RegexOptions.Singleline);
 			// Replace Bold
-			parsedContent = Regex.Replace(parsedContent, @"'''(?<bold>.+?)'''", "**${bold}**");
+			parsedContent = Regex.Replace(parsedContent, @"'''(?<bold>.*?)'''", "**${bold}**");
 			// Replace Cursive
-			parsedContent = Regex.Replace(parsedContent, @"''(?<cursive>.+?)''", "*${cursive}*");
+			parsedContent = Regex.Replace(parsedContent, @"''(?<cursive>.*?)''", "*${cursive}*");
+			// Delete nowiki
+			parsedContent = Regex.Replace(parsedContent, @"<nowiki>(?<nowiki>.*?)<\/nowiki>", "${nowiki}");
+			// Replace Code
+			parsedContent = Regex.Replace(parsedContent, @"<code>(?<code>.*?)<\/code>", "``${code}``");
+			parsedContent = Regex.Replace(parsedContent, @"<pre>(?<pre>.*?)<\/pre>", "```${pre}```");
 			// Replace Headers
+			parsedContent = Regex.Replace(parsedContent, @"====(?<h4>.+?)====", "**${h4}**");
 			parsedContent = Regex.Replace(parsedContent, @"===(?<h3>.+?)===", "**${h3}**");
 			parsedContent = Regex.Replace(parsedContent, @"==(?<h2>.+?)==", "__**${h2}**__");
 			parsedContent = Regex.Replace(parsedContent, @"=(?<h1>.+?)=", "__**${h1}**__");

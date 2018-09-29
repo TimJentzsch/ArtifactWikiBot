@@ -59,10 +59,10 @@ namespace ArtifactWikiBot.Wiki
 				Color = discordColor
 			};
 
-			if(Ability != null)
-			{
-				embed = Ability.AddToEmbed(embed);
-			}
+			//if(Ability != null)
+			//{
+			//	embed = Ability.AddToEmbed(embed);
+			//}
 
 			return embed;
 		}
